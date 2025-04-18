@@ -1,4 +1,6 @@
 ﻿using CoreIdentity.Data;
+using CoreIdentity.Entities;
+using Duende.IdentityServer.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -21,6 +23,13 @@ public class Program
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
         builder.Services.AddControllers();
+
+        builder.Services.AddIdentityServer()
+            .AddDeveloperSigningCredential()
+            .AddInMemoryIdentityResources(Config.IdentityResources)
+            .AddInMemoryApiScopes(Config.ApiScopes)
+            //.AddInMemoryClients(Config.Clients)
+            .AddAspNetIdentity<User>();
 
         builder.Services.AddSwaggerGen(c =>
         {
@@ -92,4 +101,6 @@ public class Program
 
         app.Run();
     }
+
+
 }
