@@ -1,8 +1,10 @@
 ﻿using CoreIdentity.Data;
 using CoreIdentity.Entities;
 using Duende.IdentityServer.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 namespace CoreIdentity;
@@ -19,10 +21,19 @@ public class Program
             options.UseSqlServer(connectionString));
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-        builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-            .AddEntityFrameworkStores<ApplicationDbContext>();
+        //builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+        //    .AddEntityFrameworkStores<ApplicationDbContext>();
 
         builder.Services.AddControllers();
+        
+        builder.Services.AddIdentity<User, IdentityRole>(options =>
+        {
+            options.Password.RequireDigit = true;
+            options.Password.RequiredLength = 8;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+        })
+        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddDefaultTokenProviders(); // Quan trọng: Thêm dòng này
 
         builder.Services.AddIdentityServer()
             .AddDeveloperSigningCredential()
@@ -31,15 +42,29 @@ public class Program
             //.AddInMemoryClients(Config.Clients)
             .AddAspNetIdentity<User>();
 
+
         builder.Services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo { Title = "My API", Version = "v1" });
+            c.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "CoreIdentity API",
+                Version = "v1"
+            });
+
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                BearerFormat = "JWT",
+                In = ParameterLocation.Header,
+                Scheme = "bearer"
+            });
         });
 
         builder.Services.AddRazorPages(options =>
         {
             options.Conventions.AddPageRoute("/Index", "pages{0}");
         });
+
 
         builder.Services.AddCors(options =>
         {
@@ -48,6 +73,25 @@ public class Program
                        .AllowAnyMethod()
                        .AllowAnyHeader());
         });
+
+        builder.Services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+            .AddJwtBearer(options =>  // Giờ sẽ hoạt động
+            {
+                options.Authority = "https://your-identity-server.com";
+                options.Audience = "your-api-resource";
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true
+                };
+            });
+
 
         var app = builder.Build();
 
@@ -83,7 +127,7 @@ public class Program
             app.UseHsts();
         }
 
-    
+        app.UseIdentityServer();
 
         app.UseHttpsRedirection();
         app.UseStaticFiles();

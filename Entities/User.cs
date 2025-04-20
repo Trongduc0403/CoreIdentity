@@ -2,7 +2,7 @@
 
 namespace CoreIdentity.Entities
 {
-    public class User : IdentityUser<Guid>
+    public class User : IdentityUser
     {
         public string? FullName { get; set; }
         public string? AvatarUrl { get; set; }
