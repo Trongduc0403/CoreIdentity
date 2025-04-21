@@ -9,6 +9,7 @@ namespace CoreIdentity.Controllers
     public class ExampleController : Controller
     {
         [HttpGet]
+        [Authorize]
         public IActionResult Get()
         {
             return Ok(new { Message = "Hello from API!" });
@@ -23,6 +24,20 @@ namespace CoreIdentity.Controllers
         public class ExampleModel
         {
             public string Name { get; set; }
+        }
+
+        [Authorize]
+        [HttpGet("protected")]
+        public IActionResult Protected()
+        {
+            return Ok(new { Message = "This is a protected endpoint" });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin-only")]
+        public IActionResult AdminOnly()
+        {
+            return Ok(new { Message = "Only admins can see this" });
         }
     }
 }
