@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace CoreIdentity.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class ExampleController : Controller
     {
         [HttpGet]
@@ -38,6 +38,17 @@ namespace CoreIdentity.Controllers
         public IActionResult AdminOnly()
         {
             return Ok(new { Message = "Only admins can see this" });
+        }
+
+        [HttpGet("test-token")]
+        public IActionResult TestToken()
+        {
+            var token = new JwtSecurityTokenHandler().ReadJwtToken(Request.Headers["Authorization"].ToString().Replace("Bearer ", ""));
+            return Ok(new
+            {
+                ValidTo = token.ValidTo,
+                Claims = token.Claims.Select(c => new { c.Type, c.Value })
+            });
         }
     }
 }

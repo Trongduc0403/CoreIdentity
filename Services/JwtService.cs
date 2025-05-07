@@ -15,10 +15,14 @@ namespace CoreIdentity.Services
 
         public JwtService(IConfiguration config)
         {
-            _secret = config["JwtSettings:Secret"];
-            _issuer = config["JwtSettings:Issuer"];
-            _audience = config["JwtSettings:Audience"];
-            _expiryInMinutes = int.Parse(config["JwtSettings:ExpiryInMinutes"]);
+            _secret = config["JwtSettings:Secret"] ?? throw new ArgumentNullException("JwtSettings:Secret");
+            _issuer = config["JwtSettings:Issuer"] ?? throw new ArgumentNullException("JwtSettings:Issuer");
+            _audience = config["JwtSettings:Audience"] ?? throw new ArgumentNullException("JwtSettings:Audience");
+
+            if (!int.TryParse(config["JwtSettings:ExpiryInMinutes"], out _expiryInMinutes))
+            {
+                _expiryInMinutes = 60; // Default value
+            }
         }
 
         public string GenerateToken(User user, IList<string> roles)

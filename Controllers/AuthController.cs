@@ -12,15 +12,18 @@ namespace CoreIdentity.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly SignInManager<User> _signInManager;
         private readonly JwtService _jwtService;
 
         public AuthController(
         UserManager<User> userManager,
+        RoleManager<IdentityRole> roleManager,
         SignInManager<User> signInManager,
         JwtService jwtService)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _signInManager = signInManager;
             _jwtService = jwtService;
         }
@@ -43,9 +46,21 @@ namespace CoreIdentity.Controllers
             }
 
             // Assign default role
-            await _userManager.AddToRoleAsync(user, "User");
+            if (result.Succeeded)
+            {
+                // Kiểm tra và tạo role nếu chưa tồn tại
+                if (!await _roleManager.RoleExistsAsync("USER"))
+                {
+                    await _roleManager.CreateAsync(new IdentityRole("USER"));
+                }
 
-            return Ok(new { Message = "User registered successfully" });
+                // Gán role cho user
+                await _userManager.AddToRoleAsync(user, "USER");
+
+                return Ok(new { Message = "User created successfully!" });
+            }
+
+            return BadRequest(result.Errors);
         }
 
         [HttpPost("login")]

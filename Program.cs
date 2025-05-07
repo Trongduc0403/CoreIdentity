@@ -13,7 +13,7 @@ namespace CoreIdentity;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -47,19 +47,32 @@ public class Program
 
         builder.Services.AddSwaggerGen(c =>
         {
-            c.SwaggerDoc("v1", new OpenApiInfo
-            {
-                Title = "CoreIdentity API",
-                Version = "v1"
-            });
+            c.SwaggerDoc("v1", new OpenApiInfo { Title = "Your API", Version = "v1" });
 
+            // Thêm cấu hình JWT cho Swagger
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Type = SecuritySchemeType.Http,
-                BearerFormat = "JWT",
+                Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+                Name = "Authorization",
                 In = ParameterLocation.Header,
-                Scheme = "bearer"
+                Type = SecuritySchemeType.ApiKey,
+                Scheme = "Bearer"
             });
+
+            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
         });
 
         builder.Services.AddRazorPages(options =>
@@ -70,10 +83,13 @@ public class Program
 
         builder.Services.AddCors(options =>
         {
-            options.AddPolicy("AllowAll", builder =>
-                builder.AllowAnyOrigin()
+            options.AddPolicy("SwaggerPolicy", builder =>
+            {
+                builder.WithOrigins("https://localhost:5001")
+                       .AllowAnyHeader()
                        .AllowAnyMethod()
-                       .AllowAnyHeader());
+                       .AllowCredentials();
+            });
         });
 
         builder.Services.AddScoped<JwtService>();
@@ -96,10 +112,40 @@ public class Program
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]))
             };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnAuthenticationFailed = context =>
+                {
+                    Console.WriteLine($"Authentication failed: {context.Exception}");
+                    return Task.CompletedTask;
+                },
+                OnTokenValidated = context =>
+                {
+                    Console.WriteLine("Token validated successfully");
+                    return Task.CompletedTask;
+                }
+            };
+
         });
 
 
         var app = builder.Build();
+
+        // Chạy seed data trước các middleware khác
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            try
+            {
+                await CoreIdentity.Data.SeedData.Initialize(services);
+            }
+            catch (Exception ex)
+            {
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred seeding the DB.");
+            }
+        }
 
         using (var scope = app.Services.CreateScope())
         {
@@ -142,10 +188,12 @@ public class Program
 
         app.UseSwagger();
         app.UseSwaggerUI();
-
+        app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapRazorPages();
+
+        app.UseCors("SwaggerPolicy");
 
         app.MapControllers();
 

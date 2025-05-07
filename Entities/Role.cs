@@ -2,13 +2,13 @@
 
 namespace CoreIdentity.Entities
 {
-    public class Role : IdentityRole<Guid>
+    public class Role : IdentityRole
     {
         public Role() : base() { }
         public Role(string roleName) : base(roleName) { }
 
         // Navigation properties
-        public virtual ICollection<UserRole> UserRoles { get; set; }
+        public virtual ICollection<IdentityUserRole<string>> UserRoles { get; set; }
         public virtual ICollection<IdentityRoleClaim<string>> RoleClaims { get; set; }
     }
 }
